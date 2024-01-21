@@ -53,7 +53,7 @@ class ConSys:
             params_list.append(params_jax)
             mse, gradients = gradfunc(params_jax)
             print(mse, params_jax)
-            params_jax = params_jax + self.learning_rate * gradients
+            params_jax = params_jax - self.learning_rate * gradients
             mse_list.append(mse)
             
         params_matrix = jnp.array(params_list)

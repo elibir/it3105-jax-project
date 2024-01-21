@@ -18,7 +18,7 @@ class Bathtub(Plant):
             
             velocity = jnp.sqrt(2 * self.g * self.height)
             flow_rate = velocity * self.c
-            volume_change = control_signal + disturbance - flow_rate
+            volume_change = - control_signal + disturbance - flow_rate
             self.height += volume_change / self.area
             
             # Ensure height does not go negative after update
