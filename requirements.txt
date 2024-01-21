@@ -1,0 +1,8 @@
+numpy
+matplotlib
+grapher
+# kd_array
+# copy
+jax
+jaxlib
+
