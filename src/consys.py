@@ -27,10 +27,10 @@ class ConSys:
         derivative = 0
         previous_error = 0        
 
-        for _ in range(self.timesteps):
+        for t in range(self.timesteps):
             U = self.controller.output(params, error, derivative, sum(error_history))
             D = self.generate_noise()
-            Y = self.plant.output(U, D)
+            Y = self.plant.output(U, D, t)
             error = self.plant.calculate_error(Y)
             error_history.append(error)
             derivative = error - previous_error

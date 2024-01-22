@@ -12,7 +12,7 @@ class CournotCompetition(Plant):
         self.maximum_price = maximum_price
         self.quantities = []
         
-    def output(self, control_signal, disturbance):
+    def output(self, control_signal, disturbance, timestep):
                 
         new_own_quantity = self.clamp(self.own_quantity + control_signal, 0.0, 1.0)
         new_competitor_quantity = self.clamp(self.competitor_quantity + disturbance, 0.0, 1.0)

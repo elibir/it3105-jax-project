@@ -11,7 +11,7 @@ class Bathtub(Plant):
         self.g = gravity_constant
         self.height_history = []
         
-    def output(self, control_signal, disturbance):
+    def output(self, control_signal, disturbance, timestep):
             # Ensure height is not negative before calculating velocity
             if self.height <= 0:
                 self.height = 0
