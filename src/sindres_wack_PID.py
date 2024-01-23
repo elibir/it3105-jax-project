@@ -19,7 +19,7 @@ class Controller():
     
 class StandardController(Controller):
         
-    def __init__(self, k_p = 0.2, k_i = 0.2, k_d = 0.2):
+    def __init__(self, k_p = 0.1, k_i = 0.3, k_d = 0.1):
         
         self.k_p = k_p
         self.k_i = k_i
