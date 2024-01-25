@@ -1,6 +1,8 @@
 import numpy as np
 import jax
 import jax.numpy as jnp
+from flax import linen as nn
+import optax
 
 
 # General PID Controller class
@@ -29,6 +31,19 @@ class StandardController(Controller):
 
     def output_U(self, E, sum_E, dE):
         return self.k_p * E + self.k_d * dE + self.k_i*sum_E
+    
+
+
+class NeuralController(nn.Module):
+    @nn.compact
+    def __call__(self, x):
+        x = nn.Dense(features=64)(x)
+        x = nn.relu(x)
+        x = nn.Dense(features=64)(x)
+        x = nn.relu(x)
+        x = nn.Dense(features=1)(x)  # Output layer for control signal
+        return x
+
     
 
 class Plant():
@@ -71,9 +86,10 @@ class BathtubPlant():
 
 class Consys():
 
-    def __init__(self, num_epochs = 100, num_timesteps = 100, learning_rate = 0.01, noise_min = -0.01, noise_max = 0.01):
-
-        self.controller = StandardController()
+    def __init__(self, num_epochs = 100, num_timesteps = 100, learning_rate = 0.01, noise_min = -0.01, noise_max = 0.01, controller_type_is_nn = False):
+        
+        self.controller_type_is_nn = controller_type_is_nn
+        self.controller = StandardController() if not self.controller_type_is_nn else NeuralController()
         self.plant = BathtubPlant()
         self.num_epochs = num_epochs
         self.num_timesteps = num_timesteps
@@ -83,56 +99,112 @@ class Consys():
 
         self.error_history = []
 
-    
-    def run_epoch(self, pid_weights):
-        self.controller.k_p, self.controller.k_i, self.controller.k_d = pid_weights
-        self.plant.resetPlant()
 
-        integral_sum = 0
-        prev_error = None
-        error_history = []
-        noise = np.random.uniform(self.noise_min, self.noise_max, size=self.num_timesteps)
+    def run_epoch(self, pid_weights=None):
+        if not self.controller_type_is_nn:
+            self.controller.k_p, self.controller.k_i, self.controller.k_d = pid_weights
+            self.plant.resetPlant()
 
-        for i in range(self.num_timesteps):
-            # Current error
-            current_error = self.plant.initial_height_H - self.plant.height_H
-            error_history.append(current_error)
+            integral_sum = 0
+            prev_error = None
+            error_history = []
+            noise = np.random.uniform(self.noise_min, self.noise_max, size=self.num_timesteps)
 
-            # Integral component - sum of errors
-            integral_sum += current_error
+            for i in range(self.num_timesteps):
+                # Current error
+                current_error = self.plant.initial_height_H - self.plant.height_H
+                error_history.append(current_error)
 
-            # Derivative component - change in error
-            derivative = 0 if prev_error is None else current_error - prev_error
+                # Integral component - sum of errors
+                integral_sum += current_error
 
-            # PID controller output
-            U = self.controller.output_U(current_error, integral_sum, derivative)
+                # Derivative component - change in error
+                derivative = 0 if prev_error is None else current_error - prev_error
 
-            # Update plant state
-            Y = self.plant.output_Y(U, noise[i])
+                # PID controller output
+                U = self.controller.output_U(current_error, integral_sum, derivative)
 
-            # Update previous error for next iteration
-            prev_error = current_error
+                # Update plant state
+                Y = self.plant.output_Y(U, noise[i])
 
-        mse = jnp.mean(jnp.array(error_history) ** 2)
-        return mse
+                # Update previous error for next iteration
+                prev_error = current_error
+
+            mse = jnp.mean(jnp.array(error_history) ** 2)
+            return mse
+        
+        else:
+            self.plant.resetPlant()
+
+            integral_sum = 0
+            prev_error = None
+            error_history = []
+            noise = np.random.uniform(self.noise_min, self.noise_max, size=self.num_timesteps)
+
+            for i in range(self.num_timesteps):
+                # Current error
+                current_error = self.plant.initial_height_H - self.plant.height_H
+                error_history.append(current_error)
+
+                # Integral component - sum of errors
+                integral_sum += current_error
+
+                # Derivative component - change in error
+                derivative = 0 if prev_error is None else current_error - prev_error
+
+                # PID controller output
+                U = self.controller.output_U(current_error, integral_sum, derivative)
+
+                # Update plant state
+                Y = self.plant.output_Y(U, noise[i])
+
+                # Update previous error for next iteration
+                prev_error = current_error
+
+            mse = jnp.mean(jnp.array(error_history) ** 2)
+            return mse
+
+
     
     def simulate_epochs(self):
-        mse_history = []
-        pid_history = []
-        gradfunc = jax.value_and_grad(self.run_epoch)
 
-        for epoch in range(self.num_epochs):
-            current_pid = np.array([self.controller.k_p, self.controller.k_i, self.controller.k_d])
-            pid_history.append(current_pid)
-            mse, gradients = gradfunc(current_pid)
+        if not self.controller_type_is_nn:
+            mse_history = []
+            pid_history = []
+            gradfunc = jax.value_and_grad(self.run_epoch)
 
-            # Update each PID parameter individually
-            updated_pid = current_pid - gradients * self.learning_rate
-            self.controller.k_p, self.controller.k_i, self.controller.k_d = updated_pid
+            for epoch in range(self.num_epochs):
+                current_pid = np.array([self.controller.k_p, self.controller.k_i, self.controller.k_d])
+                pid_history.append(current_pid)
+                mse, gradients = gradfunc(current_pid)
 
-            mse_history.append(mse)
+                # Update each PID parameter individually
+                updated_pid = current_pid - gradients * self.learning_rate
+                self.controller.k_p, self.controller.k_i, self.controller.k_d = updated_pid
 
-        return mse_history, pid_history  
+                mse_history.append(mse)
+
+            return mse_history, pid_history 
+        
+        else:
+            mse_history = []
+            gradfunc = jax.value_and_grad(self.run_epoch)
+
+            # Initialize the optimizer
+            optimizer = optax.adam(learning_rate=self.learning_rate)
+            opt_state = optimizer.init(self.controller.parameters)
+
+            for epoch in range(self.num_epochs):
+                # Compute loss and gradients
+                loss, gradients = gradfunc(self.controller.parameters)
+
+                # Update parameters
+                updates, opt_state = optimizer.update(gradients, opt_state)
+                self.controller.parameters = optax.apply_updates(self.controller.parameters, updates)
+
+                mse_history.append(loss)
+
+            return mse_history
 
 # def main():
 #     print('start')
