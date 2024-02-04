@@ -1,65 +1,50 @@
   
 from controller import Controller
 import jax.numpy as jnp
+import numpy as np
 import jax
-from flax import linen as nn
 
+class NeuralPidController(Controller):
+    def __init__(self, hidden_layers, activation_funcs, min_weight_value, max_weight_value):
 
-class NeuralPidController(Controller, nn.Module):
-    def __init__(self, num_hidden_layers, hidden_layer_sizes, activation_funcs, min_weight_value, max_weight_value,
-                 min_bias_value, max_bias_value, random_key):
+        if len(hidden_layers) < 0 or len(hidden_layers) > 5:
+            raise ValueError("num_hidden_layers must be between 0 and 5, inclusive.")
+        if not len(hidden_layers) + 1 == len(activation_funcs):
+            raise ValueError("""Number of activation functions must correspond to the number of hidden layers. 
+                             Ex: a network with 5 hidden layers must have 6 activation functions.""")
 
-        if not num_hidden_layers in range(0,5):
-            raise ValueError("num_hidden_layers must be in range 0-5.")
-        if not num_hidden_layers == len(hidden_layer_sizes) == len(activation_funcs):
-            raise ValueError("Hidden layers sizes / activation functions must correspond to the number of hidden layers.")
-        self.num_hidden_layers = num_hidden_layers
-        self.hidden_layer_sizes = hidden_layer_sizes
-        # Convert string activation function names to actual functions
-        self.activation_funcs = self.get_activation_functions(activation_funcs)
-        self.key = random_key
+        self.hidden_layers = hidden_layers
+        self.activation_funcs = activation_funcs
+        self.min_weight_value = min_weight_value    
+        self.max_weight_value = max_weight_value
         
-        # Define initializers for weights and biases using built-in uniform initializer
-        self.weight_init = self.create_uniform_initializer(min_weight_value, max_weight_value)
-        self.bias_init = self.create_uniform_initializer(min_bias_value, max_bias_value)
-       
+    def gen_jaxnet_params(self):
+        # add input add ouput layer, network should take in p, i, d error values, and output a single value (control signal).
+        layers = [3] + self.hidden_layers + [1]
+        sender = layers[0]
+        params = []
+        for receiver, activation in zip(layers[1:], self.activation_funcs):
+            weights = np.random.uniform(self.min_weight_value, self.max_weight_value, (sender, receiver))
+            biases = np.random.uniform(self.min_weight_value, self.max_weight_value, (1, receiver))
+            sender = receiver
+            params.append([weights, biases, activation])
+        return params
     
-    def setup(self):
-        # Setting up hidden layers using the provided layer sizes and initialization range
-        self.hidden_layers = [nn.Dense(size, kernel_init=self.weight_init, bias_init=self.bias_init) for size in self.hidden_layer_sizes]
-        # Adding the output layer with a single neuron and no activation function
-        self.output_layer = nn.Dense(1, kernel_init=self.weight_init, bias_init=self.bias_init)
-        
-    
-    def create_uniform_initializer(self, min_value, max_value):
-        return jax.random.uniform(self.key, minval=min_value, maxval=max_value)
-        
-    def get_activation_functions(self, activation_funcs):
-        """Convert list of activation function names (as strings) to actual Flax/Linen activation functions."""
-        activation_map = {
-            'sigmoid': nn.sigmoid,
-            'tanh': nn.tanh,
-            'relu': nn.relu
+    def output(all_params, features):
+        def sigmoid(x): return 1 / (1 + jnp.exp(-x))
+        def tanh(x): return jnp.tanh(x)
+        def relu(x): return jnp.maximum(0, x)
+        # Map of activation function names to their implementations
+        activation_funcs = {
+            'sigmoid': sigmoid,
+            'tanh': tanh,
+            'relu': relu
         }
-        return [activation_map[func_str.lower()] for func_str in activation_funcs]
-        
-        
-    def __call__(self, x, params):
-        # Processing the input through each hidden layer and its corresponding activation function
-        for i, (layer, activation_func) in enumerate(zip(self.hidden_layers, self.activation_funcs)):
-            x = layer(x, params=params[f'hidden_layers_{i}'])
-            if activation_func is not None:
-                x = activation_func(x)
-        # Applying the output layer
-        x = self.output_layer(x, params=params['output_layer'])
-        return x
-
-
-    def output(self, params, error, derivative, integral):
-        # Preparing the input and obtaining the control signal from the network
-        x = jnp.array([error, derivative, integral])
-        control_signal = self.apply(x, params)
-        return control_signal[0]  # Extracting the single output value
+        activations = features
+        for weights, biases, activation_func_name in all_params:
+            # Get the actual function based on the name
+            activation_func = activation_funcs[activation_func_name]
+            activations = activation_func(jnp.dot(activations, weights) + biases)
     
-    
+        return activations
 
