@@ -1,4 +1,5 @@
 from plant import Plant
+import jax.numpy as jnp
 
 class CournotCompetition(Plant):
     def __init__(self, target_profit, marginal_unit_cost, own_quantity, competitor_quantity, maximum_price):
@@ -32,7 +33,9 @@ class CournotCompetition(Plant):
         self.competitor_quantity = self.competitor_initial_quantity
         
     def calculate_error(self, profit):
-        return self.target_profit - profit
+        error = self.target_profit - profit
+        # made this return statement after having problems with incompatible shapes of "error" in run_one_epoch() in consys.
+        return jnp.array(error).reshape(1,1)
     
     def clamp(self, value, min_value, max_value):
         return max(min_value, min(max_value, value))

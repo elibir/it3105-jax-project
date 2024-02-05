@@ -5,7 +5,7 @@ import numpy as np
 import jax
 
 class NeuralPidController(Controller):
-    def __init__(self, hidden_layers, activation_funcs, min_weight_value, max_weight_value):
+    def __init__(self, hidden_layers, activation_funcs, min_weight_value, max_weight_value, seed=None):
 
         if len(hidden_layers) < 0 or len(hidden_layers) > 5:
             raise ValueError("num_hidden_layers must be between 0 and 5, inclusive.")
@@ -17,9 +17,14 @@ class NeuralPidController(Controller):
         self.activation_funcs = activation_funcs
         self.min_weight_value = min_weight_value    
         self.max_weight_value = max_weight_value
+        self.seed = seed
         
         
     def gen_jaxnet_params(self):
+        # Set the seed for reproducibility
+        if self.seed is not None:
+            np.random.seed(self.seed)
+            
         # add input add ouput layer, network should take in p, i, d error values, and output a single value (control signal).
         layers = [3] + self.hidden_layers + [1]
         sender = layers[0]

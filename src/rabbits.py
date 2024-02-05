@@ -48,7 +48,9 @@ class Rabbits(Plant):
         self.z2 = self.fox_start_population
             
     def calculate_error(self, output):
-        return output - self.rabbit_start_population
+        error = output - self.rabbit_start_population
+        # made this return statement after having problems with incompatible shapes of "error" in run_one_epoch() in consys.
+        return jnp.array(error).reshape(1,1)
 
     def clamp(self, value, min_value):
         return max(min_value, value)

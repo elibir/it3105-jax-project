@@ -41,7 +41,7 @@ class ConSys:
 
         mse = jnp.mean(jnp.array(error_history) ** 2)
         self.plant.reset()
-        return mse  
+        return mse
 
 
     def simulate(self, params=[0.1, 0.1, 0.3], verbose=False):
