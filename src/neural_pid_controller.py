@@ -18,33 +18,40 @@ class NeuralPidController(Controller):
         self.min_weight_value = min_weight_value    
         self.max_weight_value = max_weight_value
         
+        
     def gen_jaxnet_params(self):
         # add input add ouput layer, network should take in p, i, d error values, and output a single value (control signal).
         layers = [3] + self.hidden_layers + [1]
         sender = layers[0]
         params = []
-        for receiver, activation in zip(layers[1:], self.activation_funcs):
+        for receiver in layers[1:]:
             weights = np.random.uniform(self.min_weight_value, self.max_weight_value, (sender, receiver))
             biases = np.random.uniform(self.min_weight_value, self.max_weight_value, (1, receiver))
             sender = receiver
-            params.append([weights, biases, activation])
+            params.append([weights, biases])
         return params
     
-    def output(all_params, features):
+    
+    def output(self, all_params, features):
         def sigmoid(x): return 1 / (1 + jnp.exp(-x))
         def tanh(x): return jnp.tanh(x)
         def relu(x): return jnp.maximum(0, x)
-        # Map of activation function names to their implementations
+        def linear(x): return x
+        
         activation_funcs = {
             'sigmoid': sigmoid,
             'tanh': tanh,
-            'relu': relu
+            'relu': relu,
+            'linear': linear
         }
-        activations = features
-        for weights, biases, activation_func_name in all_params:
+        # reshape the given input into a 2D array with one row and as 
+        # many columns as necessary to accommodate all the elements of input. before was activations = features which
+        # caused array shape errors
+        activations = jnp.array(features).reshape(1, -1)
+        
+        for i, (weights, biases) in enumerate(all_params):
             # Get the actual function based on the name
-            activation_func = activation_funcs[activation_func_name]
+            activation_func = activation_funcs[self.activation_funcs[i]]
             activations = activation_func(jnp.dot(activations, weights) + biases)
-    
         return activations
 

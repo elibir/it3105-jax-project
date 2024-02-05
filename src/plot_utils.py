@@ -23,3 +23,15 @@ def plot_classic_pid(mse_list, params_matrix):
 
     plt.tight_layout()
     plt.show()
+    
+def plot_nn_pid(mse_list):
+    plt.figure(figsize=(10, 8))
+    # Plot MSE
+    plt.plot(mse_list)
+    plt.title('Mean Squared Error')
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE')
+    plt.xticks(np.arange(0, len(mse_list)+1, step=max(1, len(mse_list)//10)))
+    
+    plt.tight_layout()
+    plt.show()

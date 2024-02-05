@@ -1,10 +1,9 @@
 numpy
 matplotlib
-grapher
-# kd_array
-# copy
 jax
 jaxlib
+
+grapher
 flax
 optax
 pandas
