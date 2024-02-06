@@ -2,5 +2,7 @@
 __pycache__/
 .DS_Store
 src/report.ipynb
+notebooks/elias_report.html
 elias_report.pdf
+
 
