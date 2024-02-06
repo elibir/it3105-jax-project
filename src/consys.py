@@ -44,7 +44,7 @@ class ConSys:
         return mse
 
 
-    def simulate(self, params=[0.1, 0.1, 0.3], verbose=False):
+    def simulate(self, params=[0.1, 0.1, 0.1], verbose=False):
         
         if isinstance(self.controller, ClassicPidController):
             return self.simulate_classic(params, verbose)
