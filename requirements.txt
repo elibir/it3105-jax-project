@@ -2,6 +2,8 @@ numpy
 matplotlib
 jax
 jaxlib
+jupyter
+TeX
 
 grapher
 flax
