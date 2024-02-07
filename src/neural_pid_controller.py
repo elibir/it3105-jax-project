@@ -6,6 +6,7 @@ import jax
 
 class NeuralPidController(Controller):
     def __init__(self, hidden_layers, activation_funcs, min_weight_value, max_weight_value, seed=None):
+        super().__init__()
 
         if len(hidden_layers) < 0 or len(hidden_layers) > 5:
             raise ValueError("num_hidden_layers must be between 0 and 5, inclusive.")
