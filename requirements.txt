@@ -4,9 +4,6 @@ jax
 jaxlib
 jupyter
 
-grapher
-flax
-optax
-pandas
+
 
 
