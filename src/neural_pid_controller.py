@@ -10,9 +10,9 @@ class NeuralPidController(Controller):
 
         if len(hidden_layers) < 0 or len(hidden_layers) > 5:
             raise ValueError("num_hidden_layers must be between 0 and 5, inclusive.")
-        if not len(hidden_layers) + 1 == len(activation_funcs):
+        if not len(hidden_layers) == len(activation_funcs):
             raise ValueError("""Number of activation functions must correspond to the number of hidden layers. 
-                             Ex: a network with 5 hidden layers must have 6 activation functions.""")
+                             Ex: a network with 5 hidden layers must have 5 activation functions.""")
 
         self.hidden_layers = hidden_layers
         self.activation_funcs = activation_funcs
@@ -42,13 +42,11 @@ class NeuralPidController(Controller):
         def sigmoid(x): return 1 / (1 + jnp.exp(-x))
         def tanh(x): return jnp.tanh(x)
         def relu(x): return jnp.maximum(0, x)
-        def linear(x): return x
         
         activation_funcs = {
             'sigmoid': sigmoid,
             'tanh': tanh,
             'relu': relu,
-            'linear': linear
         }
         # reshape the given input into a 2D array with one row and as 
         # many columns as necessary to accommodate all the elements of input. before was activations = features which
@@ -56,8 +54,11 @@ class NeuralPidController(Controller):
         activations = jnp.array(features).reshape(1, -1)
         
         for i, (weights, biases) in enumerate(all_params):
-            # Get the actual function based on the name
-            activation_func = activation_funcs[self.activation_funcs[i]]
-            activations = activation_func(jnp.dot(activations, weights) + biases)
+            # Ensure last layer activation is always linear
+            if i == len(all_params) - 1:
+                activations = jnp.dot(activations, weights) + biases  # No activation function
+            else:
+                activation_func = activation_funcs[self.activation_funcs[i]]
+                activations = activation_func(jnp.dot(activations, weights) + biases)
         return activations
 
